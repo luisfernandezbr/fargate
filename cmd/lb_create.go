@@ -12,11 +12,12 @@ import (
 type lbCreateOperation struct {
 	certificateARNs []string
 	certificateOperation
-	elbv2  elbv2.Client
-	lbType string
-	lbName string
-	output Output
-	ports  []Port
+	elbv2    elbv2.Client
+	lbType   string
+	lbName   string
+	output   Output
+	ports    []Port
+	internal bool
 	vpcOperation
 }
 
@@ -130,6 +131,7 @@ func (o lbCreateOperation) execute() {
 			SecurityGroupIDs: o.securityGroupIDs,
 			SubnetIDs:        o.subnetIDs,
 			Type:             o.lbType,
+			Internal:         o.internal,
 		},
 	)
 
@@ -181,6 +183,7 @@ func (o lbCreateOperation) execute() {
 func newLBCreateOperation(
 	lbName string,
 	certificates, ports, securityGroupIDs, subnetIDs []string,
+	internal bool,
 	output Output,
 	acm acm.Client,
 	ec2 ec2.Client,
@@ -192,6 +195,7 @@ func newLBCreateOperation(
 		lbName:               lbName,
 		output:               output,
 		vpcOperation:         vpcOperation{ec2: ec2, output: output},
+		internal:             internal,
 	}
 
 	if errs := operation.setPorts(ports); len(errs) > 0 {
@@ -269,6 +273,7 @@ applied to the load balancer.`,
 			lbCreateFlags.ports,
 			lbCreateFlags.securityGroupIDs,
 			lbCreateFlags.subnetIDs,
+			lbCreateFlags.internal,
 			output,
 			acm.New(sess),
 			ec2.New(sess),
@@ -288,6 +293,7 @@ var lbCreateFlags struct {
 	ports            []string
 	securityGroupIDs []string
 	subnetIDs        []string
+	internal         bool
 }
 
 func init() {
@@ -299,6 +305,8 @@ func init() {
 		"ID of a security group to apply to the load balancer (can be specified multiple times)")
 	lbCreateCmd.Flags().StringSliceVar(&lbCreateFlags.subnetIDs, "subnet-id", []string{},
 		"ID of a subnet to place the load balancer (can be specified multiple times)")
+	lbCreateCmd.Flags().BoolVar(&lbCreateFlags.internal, "internal", false,
+		"Create the load balancer as internal only. (default is false i.e. internet-facing)")
 
 	lbCmd.AddCommand(lbCreateCmd)
 }

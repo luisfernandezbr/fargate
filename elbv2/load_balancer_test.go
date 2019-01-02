@@ -26,9 +26,9 @@ var (
 				LoadBalancerArn:       aws.String(lbARN),
 				DNSName:               aws.String(dnsName),
 				CanonicalHostedZoneId: aws.String(hostedZoneID),
-				VpcId:            aws.String(vpcID),
-				LoadBalancerName: aws.String(lbName),
-				SecurityGroups:   []*string{aws.String("sg-5943793c")},
+				VpcId:                 aws.String(vpcID),
+				LoadBalancerName:      aws.String(lbName),
+				SecurityGroups:        []*string{aws.String("sg-5943793c")},
 				AvailabilityZones: []*awselbv2.AvailabilityZone{
 					&awselbv2.AvailabilityZone{
 						SubnetId: aws.String(subnet),
@@ -144,6 +144,7 @@ func TestCreateLoadBalancer(t *testing.T) {
 		Subnets:        aws.StringSlice(subnetIDs),
 		SecurityGroups: aws.StringSlice(securityGroupIDs),
 		Type:           aws.String(lbType),
+		Scheme:         aws.String("internet-facing"),
 	}
 	o := &awselbv2.CreateLoadBalancerOutput{
 		LoadBalancers: []*awselbv2.LoadBalancer{
@@ -157,6 +158,54 @@ func TestCreateLoadBalancer(t *testing.T) {
 		SubnetIDs:        subnetIDs,
 		Type:             lbType,
 		SecurityGroupIDs: securityGroupIDs,
+		Internal:         false,
+	}
+
+	mockELBV2API.EXPECT().CreateLoadBalancer(i).Return(o, nil)
+
+	arn, err := elbv2.CreateLoadBalancer(params)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if arn != lbARN {
+		t.Errorf("expected ARN %s, got %s", lbARN, arn)
+	}
+}
+
+func TestCreateLoadBalancerInternal(t *testing.T) {
+	lbARN := "arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/app/my-load-balancer/50dc6c495c0c9188"
+	name := "cool-load-balancer"
+	subnetIDs := []string{"subnet-1234567"}
+	securityGroupIDs := []string{"sg-1234567"}
+	lbType := "application"
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockELBV2API := sdk.NewMockELBV2API(mockCtrl)
+	elbv2 := SDKClient{client: mockELBV2API}
+	i := &awselbv2.CreateLoadBalancerInput{
+		Name:           aws.String(name),
+		Subnets:        aws.StringSlice(subnetIDs),
+		SecurityGroups: aws.StringSlice(securityGroupIDs),
+		Type:           aws.String(lbType),
+		Scheme:         aws.String("internal"),
+	}
+	o := &awselbv2.CreateLoadBalancerOutput{
+		LoadBalancers: []*awselbv2.LoadBalancer{
+			&awselbv2.LoadBalancer{
+				LoadBalancerArn: aws.String(lbARN),
+			},
+		},
+	}
+	params := CreateLoadBalancerParameters{
+		Name:             name,
+		SubnetIDs:        subnetIDs,
+		Type:             lbType,
+		SecurityGroupIDs: securityGroupIDs,
+		Internal:         true,
 	}
 
 	mockELBV2API.EXPECT().CreateLoadBalancer(i).Return(o, nil)

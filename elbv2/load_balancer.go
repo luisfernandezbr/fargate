@@ -31,15 +31,26 @@ type CreateLoadBalancerParameters struct {
 	SecurityGroupIDs []string
 	SubnetIDs        []string
 	Type             string
+	Internal         bool
 }
 
+const schemeInternetFacing = "internet-facing"
+const schemeInternal = "internal"
+
 // CreateLoadBalancer creates a new load balancer. It returns the ARN of the load balancer if it is successfully
-// created.
+// created. Default to internet-facing load balancer.
 func (elbv2 SDKClient) CreateLoadBalancer(p CreateLoadBalancerParameters) (string, error) {
+	scheme := schemeInternetFacing
+
+	if p.Internal {
+		scheme = schemeInternal
+	}
+
 	sdki := &awselbv2.CreateLoadBalancerInput{
 		Name:    aws.String(p.Name),
 		Subnets: aws.StringSlice(p.SubnetIDs),
 		Type:    aws.String(p.Type),
+		Scheme:  aws.String(scheme),
 	}
 
 	if p.Type == awselbv2.LoadBalancerTypeEnumApplication {
