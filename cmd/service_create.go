@@ -224,7 +224,11 @@ specifying explicit subnets by passing the --subnet-id flag with a subnet ID.
 
 A task role can be optionally specified via the --task-role flag by providing
 eith a full IAM role ARN or the name of an IAM role. The tasks run by the
-service will be able to assume this role.`,
+service will be able to assume this role.
+
+Providing a target group name via the --lb-target-group-name flag overrides the default
+generated group name using the cluster and service name. This value must be less than or equal to 
+32 characters or it will fail.`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		operation := &ServiceCreateOperation{
