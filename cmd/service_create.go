@@ -33,6 +33,7 @@ type ServiceCreateOperation struct {
 	ServiceName      string
 	SubnetIds        []string
 	TaskRole         string
+	TargetGroupName  string
 }
 
 func (o *ServiceCreateOperation) SetPort(inputPort string) {
@@ -135,6 +136,13 @@ func (o *ServiceCreateOperation) SetSecurityGroupIds(securityGroupIds []string) 
 	o.SecurityGroupIds = securityGroupIds
 }
 
+func (o *ServiceCreateOperation) SetTargetGroupName(targetGroupName string) {
+	if len(targetGroupName) > 32 {
+		console.ErrorExit(fmt.Errorf("target group name is too long (32 chars at most)"), "Invalid target group name")
+	}
+	o.TargetGroupName = targetGroupName
+}
+
 var (
 	flagServiceCreateCpu              string
 	flagServiceCreateEnvVars          []string
@@ -147,6 +155,7 @@ var (
 	flagServiceCreateSecurityGroupIds []string
 	flagServiceCreateSubnetIds        []string
 	flagServiceCreateTaskRole         string
+	flagServiceCreateTargetGroupName  string
 )
 
 var serviceCreateCmd = &cobra.Command{
@@ -245,6 +254,10 @@ service will be able to assume this role.`,
 			operation.SetEnvVars(flagServiceCreateEnvVars)
 		}
 
+		if len(flagServiceCreateTargetGroupName) > 0 {
+			operation.SetTargetGroupName(flagServiceCreateTargetGroupName)
+		}
+
 		operation.Validate()
 		createService(operation)
 	},
@@ -262,6 +275,7 @@ func init() {
 	serviceCreateCmd.Flags().StringSliceVar(&flagServiceCreateSecurityGroupIds, "security-group-id", []string{}, "ID of a security group to apply to the service (can be specified multiple times)")
 	serviceCreateCmd.Flags().StringSliceVar(&flagServiceCreateSubnetIds, "subnet-id", []string{}, "ID of a subnet in which to place the service (can be specified multiple times)")
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateTaskRole, "task-role", "", "", "Name or ARN of an IAM role that the service's tasks can assume")
+	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateTargetGroupName, "lb-target-group-name", "", "", "Target group name of the service for the load balancer")
 
 	serviceCmd.AddCommand(serviceCreateCmd)
 }
@@ -313,10 +327,16 @@ func createService(operation *ServiceCreateOperation) {
 	}
 
 	if operation.LoadBalancerArn != "" {
+		targetGroupName := fmt.Sprintf("%s-%s", clusterName, operation.ServiceName)
+
+		if operation.TargetGroupName != "" {
+			targetGroupName = operation.TargetGroupName
+		}
+
 		vpcId, _ := ec2.GetSubnetVPCID(operation.SubnetIds[0])
 		targetGroupArn, _ = elbv2.CreateTargetGroup(
 			ELBV2.CreateTargetGroupParameters{
-				Name:     fmt.Sprintf("%s-%s", clusterName, operation.ServiceName),
+				Name:     targetGroupName,
 				Port:     operation.Port.Number,
 				Protocol: operation.Port.Protocol,
 				VPCID:    vpcId,
