@@ -265,7 +265,11 @@ Security groups can optionally be specified for HTTP/HTTPS load balancers by
 passing the --security-group-id flag with a security group ID. To add multiple
 security groups, pass --security-group-id with a security group ID multiple
 times. If --security-group-id is omitted, a permissive security group will be
-applied to the load balancer.`,
+applied to the load balancer.
+
+Using the --internal flag with the create command will create an internal 
+load balancer. This load balancer will not be accessible from the internet, 
+only from within the vpc.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		operation, errs := newLBCreateOperation(
 			args[0],
