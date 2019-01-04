@@ -26,3 +26,6 @@ dist:
 	find dist/build -name *.zip -exec mv {} dist \;
 
 	rm -rf dist/build
+
+release:
+	hub release create -a dist/fargate-${FARGATE_VERSION}-darwin-amd64.zip -a dist/fargate-${FARGATE_VERSION}-linux-386.zip -a dist/fargate-${FARGATE_VERSION}-linux-amd64.zip -a dist/fargate-${FARGATE_VERSION}-linux-arm.zip -e v${FARGATE_VERSION}

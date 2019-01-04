@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const defaultTargetGroupFormat = "%s-default"
+const defaultTargetGroupFormat = "%s0"
 
 type lbOperation struct {
 	elbv2  elbv2.Client
