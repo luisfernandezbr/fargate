@@ -181,7 +181,9 @@ func (ecs *ECS) AddEnvVarsToTaskDefinition(taskDefinitionArn string, envVars []E
 }
 
 func (ecs *ECS) AddSecretVarsToTaskDefinition(taskDefinitionArn string, envVars []EnvVar) string {
+	var newEnvironment []*awsecs.Secret
 	taskDefinition := ecs.DescribeTaskDefinition(taskDefinitionArn)
+	environment := taskDefinition.ContainerDefinitions[0].Secrets
 
 	for _, envVar := range envVars {
 		keyValuePair := &awsecs.Secret{
@@ -189,12 +191,24 @@ func (ecs *ECS) AddSecretVarsToTaskDefinition(taskDefinitionArn string, envVars 
 			ValueFrom: aws.String(envVar.Value),
 		}
 
-		taskDefinition.ContainerDefinitions[0].Secrets = append(
-			taskDefinition.ContainerDefinitions[0].Secrets,
-			keyValuePair,
-		)
+		newEnvironment = append(newEnvironment, keyValuePair)
 	}
 
+	for _, key := range environment {
+		found := false
+		for _, envKey := range newEnvironment {
+			if aws.StringValue(key.Name) == aws.StringValue(envKey.Name) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			newEnvironment = append(newEnvironment, key)
+		}
+	}
+
+	taskDefinition.ContainerDefinitions[0].Secrets = newEnvironment
 	resp, err := ecs.svc.RegisterTaskDefinition(
 		&awsecs.RegisterTaskDefinitionInput{
 			ContainerDefinitions:    taskDefinition.ContainerDefinitions,
@@ -222,11 +236,15 @@ func (ecs *ECS) RemoveEnvVarsFromTaskDefinition(taskDefinitionArn string, keys [
 	environment := taskDefinition.ContainerDefinitions[0].Environment
 
 	for _, keyValuePair := range environment {
+		found := false
 		for _, key := range keys {
 			if aws.StringValue(keyValuePair.Name) == key {
-				continue
+				found = true
+				break
 			}
+		}
 
+		if !found {
 			newEnvironment = append(newEnvironment, keyValuePair)
 		}
 	}
@@ -260,11 +278,15 @@ func (ecs *ECS) RemoveSecretVarsFromTaskDefinition(taskDefinitionArn string, key
 	environment := taskDefinition.ContainerDefinitions[0].Secrets
 
 	for _, keyValuePair := range environment {
+		found := false
 		for _, key := range keys {
 			if aws.StringValue(keyValuePair.Name) == key {
-				continue
+				found = true
+				break
 			}
+		}
 
+		if !found {
 			newEnvironment = append(newEnvironment, keyValuePair)
 		}
 	}

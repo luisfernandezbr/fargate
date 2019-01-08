@@ -13,7 +13,7 @@ type ServiceSecretSetOperation struct {
 
 func (o *ServiceSecretSetOperation) Validate() {
 	if len(o.SecretVars) == 0 {
-		console.IssueExit("No environment variables specified")
+		console.IssueExit("No secret variables specified")
 	}
 }
 
@@ -40,7 +40,7 @@ var serviceSecretSetCmd = &cobra.Command{
 }
 
 func init() {
-	serviceSecretSetCmd.Flags().StringSliceVarP(&flagServiceEnvSetEnvVars, "secret", "s", []string{}, "Environment variables to set [e.g. KEY=value]")
+	serviceSecretSetCmd.Flags().StringSliceVarP(&flagServiceSecretSetEnvVars, "secret", "s", []string{}, "Environment variables to set [e.g. KEY=value]")
 
 	serviceSecretCmd.AddCommand(serviceSecretSetCmd)
 }
