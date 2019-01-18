@@ -25,6 +25,11 @@ type LoadBalancer struct {
 // LoadBalancers is a collection of Elastic Load Balancing (v2) load balancers.
 type LoadBalancers []LoadBalancer
 
+type Tag struct {
+	Key   string
+	Value string
+}
+
 // CreateLoadBalancerParameters are the parameters required to create a new load balancer.
 type CreateLoadBalancerParameters struct {
 	Name             string
@@ -32,6 +37,7 @@ type CreateLoadBalancerParameters struct {
 	SubnetIDs        []string
 	Type             string
 	Internal         bool
+	Tags             []Tag
 }
 
 const schemeInternetFacing = "internet-facing"
@@ -40,6 +46,14 @@ const schemeInternal = "internal"
 // CreateLoadBalancer creates a new load balancer. It returns the ARN of the load balancer if it is successfully
 // created. Default to internet-facing load balancer.
 func (elbv2 SDKClient) CreateLoadBalancer(p CreateLoadBalancerParameters) (string, error) {
+	tags := []*awselbv2.Tag{}
+
+	if len(p.Tags) > 0 {
+		for _, mytag := range p.Tags {
+			tags = append(tags, &awselbv2.Tag{Key: aws.String(mytag.Key), Value: aws.String(mytag.Value)})
+		}
+	}
+
 	scheme := schemeInternetFacing
 
 	if p.Internal {
@@ -51,6 +65,7 @@ func (elbv2 SDKClient) CreateLoadBalancer(p CreateLoadBalancerParameters) (strin
 		Subnets: aws.StringSlice(p.SubnetIDs),
 		Type:    aws.String(p.Type),
 		Scheme:  aws.String(scheme),
+		Tags:    tags,
 	}
 
 	if p.Type == awselbv2.LoadBalancerTypeEnumApplication {

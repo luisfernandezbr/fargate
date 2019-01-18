@@ -7,6 +7,10 @@
 
 [![fargate CLI screencast](http://img.youtube.com/vi/P6iY6ovhbfc/0.jpg)](http://www.youtube.com/watch?v=P6iY6ovhbfc)
 
+## Pinpoint changes
+
+This repo has been heavily modified to support OPS processes. Not all the changes are in the help. If you would like to PR any changes please submit a PR to our branch.
+
 ## Usage
 
 ### Configuration

@@ -25,12 +25,17 @@ type CreateTaskDefinitionInput struct {
 	LogRegion        string
 	TaskRole         string
 	Type             string
+	Compatibility    string
 }
 
-type EnvVar struct {
+type KeyValue struct {
 	Key   string
 	Value string
 }
+
+type EnvVar KeyValue
+
+type Tag KeyValue
 
 func (ecs *ECS) CreateTaskDefinition(input *CreateTaskDefinitionInput) string {
 	console.Debug("Creating ECS task definition")
@@ -70,7 +75,7 @@ func (ecs *ECS) CreateTaskDefinition(input *CreateTaskDefinitionInput) string {
 			Family:                  aws.String(fmt.Sprintf("%s_%s", input.Type, input.Name)),
 			Memory:                  aws.String(input.Memory),
 			NetworkMode:             aws.String(awsecs.NetworkModeAwsvpc),
-			RequiresCompatibilities: aws.StringSlice([]string{awsecs.CompatibilityFargate}),
+			RequiresCompatibilities: aws.StringSlice([]string{input.Compatibility}),
 			TaskRoleArn:             aws.String(input.TaskRole),
 		},
 	)

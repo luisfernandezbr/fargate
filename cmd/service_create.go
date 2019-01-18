@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	awsecs "github.com/aws/aws-sdk-go/service/ecs"
 	CWL "github.com/jpignata/fargate/cloudwatchlogs"
 	"github.com/jpignata/fargate/console"
 	"github.com/jpignata/fargate/docker"
@@ -34,6 +35,9 @@ type ServiceCreateOperation struct {
 	SubnetIds        []string
 	TaskRole         string
 	TargetGroupName  string
+	Compatibility    string
+	RepositoryName   string
+	Tags             []ECS.Tag
 }
 
 func (o *ServiceCreateOperation) SetPort(inputPort string) {
@@ -132,6 +136,13 @@ func (o *ServiceCreateOperation) SetEnvVars(inputEnvVars []string) {
 	o.EnvVars = extractEnvVars(inputEnvVars)
 }
 
+func (o *ServiceCreateOperation) SetTags(tags []string) {
+	o.Tags = []ECS.Tag{}
+	for key, value := range extractMap(tags) {
+		o.Tags = append(o.Tags, ECS.Tag{Key: key, Value: value})
+	}
+}
+
 func (o *ServiceCreateOperation) SetSecurityGroupIds(securityGroupIds []string) {
 	o.SecurityGroupIds = securityGroupIds
 }
@@ -141,6 +152,18 @@ func (o *ServiceCreateOperation) SetTargetGroupName(targetGroupName string) {
 		console.ErrorExit(fmt.Errorf("target group name is too long (32 chars at most)"), "Invalid target group name")
 	}
 	o.TargetGroupName = targetGroupName
+}
+
+func (o *ServiceCreateOperation) SetCompatibility(compat string) {
+	if compat != awsecs.CompatibilityFargate && compat != awsecs.CompatibilityEc2 {
+		console.ErrorExit(fmt.Errorf("compatibility must be FARGATE or EC2"), "Invalid compatibility")
+	}
+
+	o.Compatibility = compat
+}
+
+func (o *ServiceCreateOperation) SetRepositoryName(name string) {
+	o.RepositoryName = name
 }
 
 var (
@@ -156,6 +179,9 @@ var (
 	flagServiceCreateSubnetIds        []string
 	flagServiceCreateTaskRole         string
 	flagServiceCreateTargetGroupName  string
+	flagServiceCreateCompatibility    string
+	flagServiceCreateRepositoryName   string
+	flagServiceCreateTags             []string
 )
 
 var serviceCreateCmd = &cobra.Command{
@@ -262,6 +288,16 @@ generated group name using the cluster and service name. This value must be less
 			operation.SetTargetGroupName(flagServiceCreateTargetGroupName)
 		}
 
+		operation.SetCompatibility(flagServiceCreateCompatibility)
+
+		if len(flagServiceCreateRepositoryName) > 0 {
+			operation.SetRepositoryName(flagServiceCreateRepositoryName)
+		}
+
+		if len(flagServiceCreateTags) > 0 {
+			operation.SetTags(flagServiceCreateTags)
+		}
+
 		operation.Validate()
 		createService(operation)
 	},
@@ -280,6 +316,9 @@ func init() {
 	serviceCreateCmd.Flags().StringSliceVar(&flagServiceCreateSubnetIds, "subnet-id", []string{}, "ID of a subnet in which to place the service (can be specified multiple times)")
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateTaskRole, "task-role", "", "", "Name or ARN of an IAM role that the service's tasks can assume")
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateTargetGroupName, "lb-target-group-name", "", "", "Target group name of the service for the load balancer")
+	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateCompatibility, "compatibility", "", awsecs.CompatibilityFargate, "Compatibility of the task (FARGATE or EC2)")
+	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateRepositoryName, "repo", "", "", "Name of the repository, if it isn't provided the servicename will be used")
+	serviceCreateCmd.Flags().StringSliceVarP(&flagServiceCreateTags, "tag", "t", []string{}, "Tags for the service")
 
 	serviceCmd.AddCommand(serviceCreateCmd)
 }
@@ -307,11 +346,15 @@ func createService(operation *ServiceCreateOperation) {
 
 	if operation.Image == "" {
 		var tag, repositoryUri string
+		repoName := operation.ServiceName
+		if operation.RepositoryName != "" {
+			repoName = operation.RepositoryName
+		}
 
-		if ecr.IsRepositoryCreated(operation.ServiceName) {
-			repositoryUri = ecr.GetRepositoryUri(operation.ServiceName)
+		if ecr.IsRepositoryCreated(repoName) {
+			repositoryUri = ecr.GetRepositoryUri(repoName)
 		} else {
-			repositoryUri = ecr.CreateRepository(operation.ServiceName)
+			repositoryUri = ecr.CreateRepository(repoName)
 		}
 
 		if git.IsCwdGitRepo() {
@@ -369,6 +412,7 @@ func createService(operation *ServiceCreateOperation) {
 			LogRegion:        region,
 			TaskRole:         operation.TaskRole,
 			Type:             typeService,
+			Compatibility:    operation.Compatibility,
 		},
 	)
 
@@ -382,6 +426,7 @@ func createService(operation *ServiceCreateOperation) {
 			SubnetIds:         operation.SubnetIds,
 			TargetGroupArn:    targetGroupArn,
 			TaskDefinitionArn: taskDefinitionArn,
+			Compatibility:     operation.Compatibility,
 		},
 	)
 

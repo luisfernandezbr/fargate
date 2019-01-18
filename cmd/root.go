@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	version = "0.2.3"
+	version = "0.2.6+pinpt"
 
 	defaultClusterName = "fargate"
 	defaultRegion      = "us-east-1"
@@ -197,6 +197,22 @@ func extractEnvVars(inputEnvVars []string) []ECS.EnvVar {
 		}
 
 		envVars = append(envVars, envVar)
+	}
+
+	return envVars
+}
+
+func extractMap(inputEqualVars []string) map[string]string {
+	var envVars map[string]string
+
+	for _, inputEnvVar := range inputEqualVars {
+		splitInputEnvVar := strings.SplitN(inputEnvVar, "=", 2)
+
+		if len(splitInputEnvVar) != 2 {
+			console.ErrorExit(fmt.Errorf("%s must be in the form of KEY=value", inputEnvVar), "Invalid environment variable")
+		}
+
+		envVars[splitInputEnvVar[0]] = splitInputEnvVar[1]
 	}
 
 	return envVars

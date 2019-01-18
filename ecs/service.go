@@ -19,15 +19,19 @@ type CreateServiceInput struct {
 	SubnetIds         []string
 	TargetGroupArn    string
 	TaskDefinitionArn string
+	Compatibility     string
+	Tags              []Tag
 }
 
 type Service struct {
 	Cluster           string
+	Compatibility     string
 	Cpu               string
 	Deployments       []Deployment
 	DesiredCount      int64
 	EnvVars           []EnvVar
 	Events            []Event
+	Tags              []Tag
 	Image             string
 	Memory            string
 	Name              string
@@ -67,12 +71,20 @@ func (s *Service) AddDeployment(d Deployment) {
 func (ecs *ECS) CreateService(input *CreateServiceInput) {
 	console.Debug("Creating ECS service")
 
+	tags := []*awsecs.Tag{}
+
+	if len(input.Tags) > 0 {
+		for _, mytag := range input.Tags {
+			tags = append(tags, &awsecs.Tag{Key: aws.String(mytag.Key), Value: aws.String(mytag.Value)})
+		}
+	}
+
 	createServiceInput := &awsecs.CreateServiceInput{
 		Cluster:        aws.String(input.Cluster),
 		DesiredCount:   aws.Int64(input.DesiredCount),
 		ServiceName:    aws.String(input.Name),
 		TaskDefinition: aws.String(input.TaskDefinitionArn),
-		LaunchType:     aws.String(awsecs.CompatibilityFargate),
+		LaunchType:     aws.String(input.Compatibility),
 		NetworkConfiguration: &awsecs.NetworkConfiguration{
 			AwsvpcConfiguration: &awsecs.AwsVpcConfiguration{
 				AssignPublicIp: aws.String(awsecs.AssignPublicIpEnabled),
@@ -80,6 +92,7 @@ func (ecs *ECS) CreateService(input *CreateServiceInput) {
 				SecurityGroups: aws.StringSlice(input.SecurityGroupIds),
 			},
 		},
+		Tags: tags,
 	}
 
 	if input.TargetGroupArn != "" && input.Port > 0 {
@@ -153,8 +166,7 @@ func (ecs *ECS) ListServices() []Service {
 
 	err := ecs.svc.ListServicesPages(
 		&awsecs.ListServicesInput{
-			Cluster:    aws.String(ecs.ClusterName),
-			LaunchType: aws.String(awsecs.CompatibilityFargate),
+			Cluster: aws.String(ecs.ClusterName),
 		},
 
 		func(resp *awsecs.ListServicesOutput, lastPage bool) bool {
@@ -212,6 +224,7 @@ func (ecs *ECS) DescribeServices(serviceArns []string) []Service {
 			Status:            aws.StringValue(service.Status),
 			SubnetIds:         aws.StringValueSlice(subnetIds),
 			TaskDefinitionArn: aws.StringValue(service.TaskDefinition),
+			Compatibility:     aws.StringValue(service.LaunchType),
 		}
 
 		taskDefinition := ecs.DescribeTaskDefinition(aws.StringValue(service.TaskDefinition))

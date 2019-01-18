@@ -18,6 +18,7 @@ type lbCreateOperation struct {
 	output   Output
 	ports    []Port
 	internal bool
+	tags     []elbv2.Tag
 	vpcOperation
 }
 
@@ -106,6 +107,13 @@ func (o *lbCreateOperation) setCertificateARNs(domainNames []string) []error {
 	return errs
 }
 
+func (o *lbCreateOperation) SetTags(tags []string) {
+	o.tags = []elbv2.Tag{}
+	for key, value := range extractMap(tags) {
+		o.tags = append(o.tags, elbv2.Tag{Key: key, Value: value})
+	}
+}
+
 func (o lbCreateOperation) validate() (errs []error) {
 	if o.lbName == "" {
 		errs = append(errs, fmt.Errorf("--name is required"))
@@ -132,6 +140,7 @@ func (o lbCreateOperation) execute() {
 			SubnetIDs:        o.subnetIDs,
 			Type:             o.lbType,
 			Internal:         o.internal,
+			Tags:             o.tags,
 		},
 	)
 
@@ -196,6 +205,7 @@ func newLBCreateOperation(
 		output:               output,
 		vpcOperation:         vpcOperation{ec2: ec2, output: output},
 		internal:             internal,
+		tags:                 operation.tags,
 	}
 
 	if errs := operation.setPorts(ports); len(errs) > 0 {
@@ -298,6 +308,7 @@ var lbCreateFlags struct {
 	securityGroupIDs []string
 	subnetIDs        []string
 	internal         bool
+	tags             []string
 }
 
 func init() {
@@ -311,6 +322,7 @@ func init() {
 		"ID of a subnet to place the load balancer (can be specified multiple times)")
 	lbCreateCmd.Flags().BoolVar(&lbCreateFlags.internal, "internal", false,
 		"Create the load balancer as internal only. (default is false i.e. internet-facing)")
+	lbCreateCmd.Flags().StringSliceVarP(&lbCreateFlags.tags, "tag", "t", []string{}, "Tags to associate with LB")
 
 	lbCmd.AddCommand(lbCreateCmd)
 }
