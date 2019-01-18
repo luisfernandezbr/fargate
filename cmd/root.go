@@ -203,7 +203,7 @@ func extractEnvVars(inputEnvVars []string) []ECS.EnvVar {
 }
 
 func extractMap(inputEqualVars []string) map[string]string {
-	var envVars map[string]string
+	envVars := make(map[string]string)
 
 	for _, inputEnvVar := range inputEqualVars {
 		splitInputEnvVar := strings.SplitN(inputEnvVar, "=", 2)

@@ -48,7 +48,7 @@ func TestLBCreateOperation(t *testing.T) {
 		Type:             lbType,
 	}
 	createTargetGroupInput := elbv2.CreateTargetGroupParameters{
-		Name:     "lb-default",
+		Name:     "lb0",
 		Port:     80,
 		Protocol: "HTTP",
 		VPCID:    vpcID,
@@ -151,7 +151,7 @@ func TestLBCreateOperationTargetGroupError(t *testing.T) {
 		Type:             lbType,
 	}
 	createTargetGroupInput := elbv2.CreateTargetGroupParameters{
-		Name:     "lb-default",
+		Name:     "lb0",
 		Port:     80,
 		Protocol: "HTTP",
 		VPCID:    vpcID,
@@ -212,7 +212,7 @@ func TestLBCreateOperationListenerError(t *testing.T) {
 		Type:             lbType,
 	}
 	createTargetGroupInput := elbv2.CreateTargetGroupParameters{
-		Name:     "lb-default",
+		Name:     "lb0",
 		Port:     80,
 		Protocol: "HTTP",
 		VPCID:    vpcID,
