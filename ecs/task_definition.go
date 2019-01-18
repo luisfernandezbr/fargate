@@ -140,6 +140,8 @@ func (ecs *ECS) UpdateTaskDefinitionImage(taskDefinitionArn, image string) strin
 			NetworkMode:             taskDefinition.NetworkMode,
 			RequiresCompatibilities: taskDefinition.RequiresCompatibilities,
 			TaskRoleArn:             taskDefinition.TaskRoleArn,
+
+			Volumes: taskDefinition.Volumes,
 		},
 	)
 

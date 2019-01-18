@@ -65,7 +65,10 @@ func (elbv2 SDKClient) CreateLoadBalancer(p CreateLoadBalancerParameters) (strin
 		Subnets: aws.StringSlice(p.SubnetIDs),
 		Type:    aws.String(p.Type),
 		Scheme:  aws.String(scheme),
-		Tags:    tags,
+	}
+
+	if len(tags) > 0 {
+		sdki.SetTags(tags)
 	}
 
 	if p.Type == awselbv2.LoadBalancerTypeEnumApplication {

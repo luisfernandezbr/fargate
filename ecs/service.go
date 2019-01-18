@@ -92,7 +92,10 @@ func (ecs *ECS) CreateService(input *CreateServiceInput) {
 				SecurityGroups: aws.StringSlice(input.SecurityGroupIds),
 			},
 		},
-		Tags: tags,
+	}
+
+	if len(tags) > 0 {
+		createServiceInput.SetTags(tags)
 	}
 
 	if input.TargetGroupArn != "" && input.Port > 0 {
