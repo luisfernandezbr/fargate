@@ -2,6 +2,7 @@ package ecs
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -26,6 +27,7 @@ type CreateTaskDefinitionInput struct {
 	TaskRole         string
 	Type             string
 	Compatibility    string
+	GPU              int64
 }
 
 type KeyValue struct {
@@ -62,6 +64,17 @@ func (ecs *ECS) CreateTaskDefinition(input *CreateTaskDefinitionInput) string {
 			[]*awsecs.PortMapping{
 				&awsecs.PortMapping{
 					ContainerPort: aws.Int64(int64(input.Port)),
+				},
+			},
+		)
+	}
+
+	if input.GPU != 0 {
+		containerDefinition.SetResourceRequirements(
+			[]*awsecs.ResourceRequirement{
+				{
+					Type:  aws.String("GPU"),
+					Value: aws.String(strconv.FormatInt(int64(input.GPU), 10)),
 				},
 			},
 		)
@@ -140,8 +153,7 @@ func (ecs *ECS) UpdateTaskDefinitionImage(taskDefinitionArn, image string) strin
 			NetworkMode:             taskDefinition.NetworkMode,
 			RequiresCompatibilities: taskDefinition.RequiresCompatibilities,
 			TaskRoleArn:             taskDefinition.TaskRoleArn,
-
-			Volumes: taskDefinition.Volumes,
+			Volumes:                 taskDefinition.Volumes,
 		},
 	)
 
@@ -177,6 +189,7 @@ func (ecs *ECS) AddEnvVarsToTaskDefinition(taskDefinitionArn string, envVars []E
 			NetworkMode:             taskDefinition.NetworkMode,
 			RequiresCompatibilities: taskDefinition.RequiresCompatibilities,
 			TaskRoleArn:             taskDefinition.TaskRoleArn,
+			Volumes:                 taskDefinition.Volumes,
 		},
 	)
 
@@ -226,6 +239,7 @@ func (ecs *ECS) AddSecretVarsToTaskDefinition(taskDefinitionArn string, envVars 
 			NetworkMode:             taskDefinition.NetworkMode,
 			RequiresCompatibilities: taskDefinition.RequiresCompatibilities,
 			TaskRoleArn:             taskDefinition.TaskRoleArn,
+			Volumes:                 taskDefinition.Volumes,
 		},
 	)
 
@@ -268,6 +282,7 @@ func (ecs *ECS) RemoveEnvVarsFromTaskDefinition(taskDefinitionArn string, keys [
 			NetworkMode:             taskDefinition.NetworkMode,
 			RequiresCompatibilities: taskDefinition.RequiresCompatibilities,
 			TaskRoleArn:             taskDefinition.TaskRoleArn,
+			Volumes:                 taskDefinition.Volumes,
 		},
 	)
 
@@ -310,6 +325,7 @@ func (ecs *ECS) RemoveSecretVarsFromTaskDefinition(taskDefinitionArn string, key
 			NetworkMode:             taskDefinition.NetworkMode,
 			RequiresCompatibilities: taskDefinition.RequiresCompatibilities,
 			TaskRoleArn:             taskDefinition.TaskRoleArn,
+			Volumes:                 taskDefinition.Volumes,
 		},
 	)
 
@@ -375,6 +391,7 @@ func (ecs *ECS) UpdateTaskDefinitionCpuAndMemory(taskDefinitionArn, cpu, memory 
 			NetworkMode:             taskDefinition.NetworkMode,
 			RequiresCompatibilities: taskDefinition.RequiresCompatibilities,
 			TaskRoleArn:             taskDefinition.TaskRoleArn,
+			Volumes:                 taskDefinition.Volumes,
 		},
 	)
 

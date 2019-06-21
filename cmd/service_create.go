@@ -38,6 +38,7 @@ type ServiceCreateOperation struct {
 	Compatibility    string
 	RepositoryName   string
 	Tags             []ECS.Tag
+	GPU              int64
 }
 
 func (o *ServiceCreateOperation) SetPort(inputPort string) {
@@ -58,6 +59,32 @@ func (o *ServiceCreateOperation) SetPort(inputPort string) {
 	}
 
 	o.Port = port
+}
+
+func (o *ServiceCreateOperation) SetGPU(gpu int64) {
+	var msgs []string
+
+	if o.Compatibility != "EC2" {
+		msgs = append(msgs, fmt.Sprintf("Invalid compatibility %s [specify EC2]", o.Compatibility))
+	}
+
+	var foundGPU bool = false
+	for _, validGPU := range validGPUs {
+		if o.GPU == validGPU {
+			foundGPU = true
+			break
+		}
+	}
+
+	if !foundGPU {
+		msgs = append(msgs, fmt.Sprintf("Invalid gpus %v [specify %v]", o.GPU, validGPUs))
+	}
+
+	if len(msgs) > 0 {
+		console.ErrorExit(fmt.Errorf(strings.Join(msgs, ", ")), "Invalid command line flags")
+	}
+
+	o.GPU = gpu
 }
 
 func (o *ServiceCreateOperation) Validate() {
@@ -168,6 +195,7 @@ func (o *ServiceCreateOperation) SetRepositoryName(name string) {
 
 var (
 	flagServiceCreateCpu              string
+	flagServiceCreateGPU              int64
 	flagServiceCreateEnvVars          []string
 	flagServiceCreateImage            string
 	flagServiceCreateLb               string
@@ -298,6 +326,10 @@ generated group name using the cluster and service name. This value must be less
 			operation.SetTags(flagServiceCreateTags)
 		}
 
+		if flagServiceCreateGPU > 0 {
+			operation.SetGPU(flagServiceCreateGPU)
+		}
+
 		operation.Validate()
 		createService(operation)
 	},
@@ -305,6 +337,7 @@ generated group name using the cluster and service name. This value must be less
 
 func init() {
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateCpu, "cpu", "c", "256", "Amount of cpu units to allocate for each task")
+	serviceCreateCmd.Flags().Int64VarP(&flagServiceCreateGPU, "gpu", "g", 0, "Amount of gpu units to allocate for each task. Must be EC2 compatibility.")
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateMemory, "memory", "m", "512", "Amount of MiB to allocate for each task")
 	serviceCreateCmd.Flags().StringSliceVarP(&flagServiceCreateEnvVars, "env", "e", []string{}, "Environment variables to set [e.g. KEY=value] (can be specified multiple times)")
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreatePort, "port", "p", "", "Port to listen on [e.g., 80, 443, http:8080, https:8443, tcp:1935]")
@@ -413,6 +446,7 @@ func createService(operation *ServiceCreateOperation) {
 			TaskRole:         operation.TaskRole,
 			Type:             typeService,
 			Compatibility:    operation.Compatibility,
+			GPU:              operation.GPU,
 		},
 	)
 

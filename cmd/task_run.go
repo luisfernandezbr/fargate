@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+	"strings"
+
+	awsecs "github.com/aws/aws-sdk-go/service/ecs"
 	CWL "github.com/jpignata/fargate/cloudwatchlogs"
 	"github.com/jpignata/fargate/console"
 	"github.com/jpignata/fargate/docker"
@@ -24,6 +28,8 @@ type TaskRunOperation struct {
 	SubnetIds        []string
 	TaskName         string
 	TaskRole         string
+	Compatibility    string
+	GPU              int64
 }
 
 func (o *TaskRunOperation) Validate() {
@@ -36,6 +42,32 @@ func (o *TaskRunOperation) Validate() {
 	if o.Num < 1 {
 		console.ErrorExit(err, "Invalid number of tasks: %d, num must be > 1", o.Num)
 	}
+}
+
+func (o *TaskRunOperation) SetGPU(gpu int64) {
+	var msgs []string
+
+	if o.Compatibility != "EC2" {
+		msgs = append(msgs, fmt.Sprintf("Invalid compatibility %s [specify EC2]", o.Compatibility))
+	}
+
+	foundGPU := false
+	for _, validGPU := range validGPUs {
+		if gpu == validGPU {
+			foundGPU = true
+			break
+		}
+	}
+
+	if !foundGPU {
+		msgs = append(msgs, fmt.Sprintf("Invalid gpus %v [specify %v]", gpu, validGPUs))
+	}
+
+	if len(msgs) > 0 {
+		console.ErrorExit(fmt.Errorf(strings.Join(msgs, ", ")), "Invalid command line flags")
+	}
+
+	o.GPU = gpu
 }
 
 func (o *TaskRunOperation) SetEnvVars(inputEnvVars []string) {
@@ -51,6 +83,8 @@ var (
 	flagTaskRunSecurityGroupIds []string
 	flagTaskRunSubnetIds        []string
 	flagTaskRunTaskRole         string
+	flagTaskRunGPU              int64
+	flagTaskRunCompatibility    string
 )
 
 var taskRunCmd = &cobra.Command{
@@ -116,9 +150,13 @@ assume this role.`,
 			SubnetIds:        flagTaskRunSubnetIds,
 			TaskName:         args[0],
 			TaskRole:         flagTaskRunTaskRole,
+			Compatibility:    flagTaskRunCompatibility,
 		}
 
 		operation.SetEnvVars(flagTaskRunEnvVars)
+		if flagTaskRunGPU > 0 {
+			operation.SetGPU(flagTaskRunGPU)
+		}
 		operation.Validate()
 
 		runTask(operation)
@@ -127,6 +165,7 @@ assume this role.`,
 
 func init() {
 	taskRunCmd.Flags().Int64VarP(&flagTaskRunNum, "num", "n", 1, "Number of task instances to run")
+	taskRunCmd.Flags().Int64VarP(&flagTaskRunGPU, "gpu", "g", 0, "Amount of gpu units to allocate for each task. Must be EC2 compatibility.")
 	taskRunCmd.Flags().StringSliceVarP(&flagTaskRunEnvVars, "env", "e", []string{}, "Environment variables to set [e.g. KEY=value] (can be specified multiple times)")
 	taskRunCmd.Flags().StringVarP(&flagTaskRunCpu, "cpu", "c", "256", "Amount of cpu units to allocate for each task")
 	taskRunCmd.Flags().StringVarP(&flagTaskRunImage, "image", "i", "", "Docker image to run; if omitted Fargate will build an image from the Dockerfile in the current directory")
@@ -134,6 +173,7 @@ func init() {
 	taskRunCmd.Flags().StringSliceVar(&flagTaskRunSecurityGroupIds, "security-group-id", []string{}, "ID of a security group to apply to the task (can be specified multiple times)")
 	taskRunCmd.Flags().StringSliceVar(&flagTaskRunSubnetIds, "subnet-id", []string{}, "ID of a subnet in which to place the task (can be specified multiple times)")
 	taskRunCmd.Flags().StringVarP(&flagTaskRunTaskRole, "task-role", "", "", "Name or ARN of an IAM role that the tasks can assume")
+	taskRunCmd.Flags().StringVarP(&flagTaskRunCompatibility, "compatibility", "", awsecs.CompatibilityFargate, "Compatibility of the task (FARGATE or EC2)")
 	taskCmd.AddCommand(taskRunCmd)
 }
 
@@ -192,6 +232,8 @@ func runTask(operation *TaskRunOperation) {
 			Name:             operation.TaskName,
 			Type:             typeTask,
 			TaskRole:         operation.TaskRole,
+			GPU:              operation.GPU,
+			Compatibility:    operation.Compatibility,
 		},
 	)
 
@@ -203,6 +245,7 @@ func runTask(operation *TaskRunOperation) {
 			TaskDefinitionArn: taskDefinitionArn,
 			SubnetIds:         operation.SubnetIds,
 			SecurityGroupIds:  operation.SecurityGroupIds,
+			Compatibility:     operation.Compatibility,
 		},
 	)
 

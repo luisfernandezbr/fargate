@@ -51,19 +51,24 @@ type RunTaskInput struct {
 	SubnetIds         []string
 	TaskDefinitionArn string
 	TaskName          string
+	Compatibility     string
 }
 
 func (ecs *ECS) RunTask(i *RunTaskInput) {
+	assignPublicIp := awsecs.AssignPublicIpEnabled
+	if i.Compatibility == "EC2" {
+		assignPublicIp = awsecs.AssignPublicIpDisabled
+	}
 	_, err := ecs.svc.RunTask(
 		&awsecs.RunTaskInput{
 			Cluster:        aws.String(i.ClusterName),
 			Count:          aws.Int64(i.Count),
 			TaskDefinition: aws.String(i.TaskDefinitionArn),
-			LaunchType:     aws.String(awsecs.CompatibilityFargate),
+			LaunchType:     aws.String(i.Compatibility),
 			StartedBy:      aws.String(fmt.Sprintf(startedByFormat, i.TaskName)),
 			NetworkConfiguration: &awsecs.NetworkConfiguration{
 				AwsvpcConfiguration: &awsecs.AwsVpcConfiguration{
-					AssignPublicIp: aws.String(awsecs.AssignPublicIpEnabled),
+					AssignPublicIp: aws.String(assignPublicIp),
 					Subnets:        aws.StringSlice(i.SubnetIds),
 					SecurityGroups: aws.StringSlice(i.SecurityGroupIds),
 				},

@@ -79,6 +79,11 @@ func (ecs *ECS) CreateService(input *CreateServiceInput) {
 		}
 	}
 
+	assignPublicIp := awsecs.AssignPublicIpEnabled
+	if input.Compatibility == "EC2" {
+		assignPublicIp = awsecs.AssignPublicIpDisabled
+	}
+
 	createServiceInput := &awsecs.CreateServiceInput{
 		Cluster:        aws.String(input.Cluster),
 		DesiredCount:   aws.Int64(input.DesiredCount),
@@ -87,7 +92,7 @@ func (ecs *ECS) CreateService(input *CreateServiceInput) {
 		LaunchType:     aws.String(input.Compatibility),
 		NetworkConfiguration: &awsecs.NetworkConfiguration{
 			AwsvpcConfiguration: &awsecs.AwsVpcConfiguration{
-				AssignPublicIp: aws.String(awsecs.AssignPublicIpEnabled),
+				AssignPublicIp: aws.String(assignPublicIp),
 				Subnets:        aws.StringSlice(input.SubnetIds),
 				SecurityGroups: aws.StringSlice(input.SecurityGroupIds),
 			},
