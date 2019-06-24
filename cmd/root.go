@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	version = "0.2.10+pinpt"
+	version = "0.2.11+pinpt"
 
 	defaultClusterName = "fargate"
 	defaultRegion      = "us-east-1"
@@ -47,7 +47,7 @@ CPU (CPU Units)    Memory (MiB)
 
 var validRegions = []string{"us-east-1", "us-east-2", "us-west-2", "ap-southeast-1", "ap-southeast-2", "ap-northeast-1", "eu-central-1", "eu-west-1"}
 
-var validGPUs = []int64{1, 4, 8}
+var validGPUs = []int64{0, 1, 4, 8}
 
 var (
 	clusterName string
