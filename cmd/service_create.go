@@ -24,6 +24,7 @@ type ServiceCreateOperation struct {
 	Cpu              string
 	EnvVars          []ECS.EnvVar
 	Image            string
+	Dockerfile       string
 	LoadBalancerArn  string
 	LoadBalancerName string
 	Memory           string
@@ -209,6 +210,7 @@ var (
 	flagServiceCreateTargetGroupName  string
 	flagServiceCreateCompatibility    string
 	flagServiceCreateRepositoryName   string
+	flagServiceCreateDockerfile       string
 	flagServiceCreateTags             []string
 )
 
@@ -330,6 +332,8 @@ generated group name using the cluster and service name. This value must be less
 			operation.SetGPU(flagServiceCreateGPU)
 		}
 
+		operation.Dockerfile = flagServiceCreateDockerfile
+
 		operation.Validate()
 		createService(operation)
 	},
@@ -341,7 +345,7 @@ func init() {
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateMemory, "memory", "m", "512", "Amount of MiB to allocate for each task")
 	serviceCreateCmd.Flags().StringSliceVarP(&flagServiceCreateEnvVars, "env", "e", []string{}, "Environment variables to set [e.g. KEY=value] (can be specified multiple times)")
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreatePort, "port", "p", "", "Port to listen on [e.g., 80, 443, http:8080, https:8443, tcp:1935]")
-	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateImage, "image", "i", "", "Docker image to run in the service; if omitted Fargate will build an image from the Dockerfile in the current directory")
+	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateImage, "image", "i", "", "Docker image to run in the service; if omitted Fargate will build an image from the Dockerfile in the current directory or dockerfile flag")
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateLb, "lb", "l", "", "Name of a load balancer to use")
 	serviceCreateCmd.Flags().StringSliceVarP(&flagServiceCreateRules, "rule", "r", []string{}, "Routing rule for the load balancer [e.g. host=api.example.com, path=/api/*]; if omitted service will be the default route (can be specified multiple times)")
 	serviceCreateCmd.Flags().Int64VarP(&flagServiceCreateNum, "num", "n", 1, "Number of tasks instances to keep running")
@@ -351,6 +355,7 @@ func init() {
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateTargetGroupName, "lb-target-group-name", "", "", "Target group name of the service for the load balancer")
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateCompatibility, "compatibility", "", awsecs.CompatibilityFargate, "Compatibility of the task (FARGATE or EC2)")
 	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateRepositoryName, "repo", "", "", "Name of the repository, if it isn't provided the servicename will be used")
+	serviceCreateCmd.Flags().StringVarP(&flagServiceCreateDockerfile, "dockerfile", "", "", "If image is not provided, dockerfile to build")
 	serviceCreateCmd.Flags().StringSliceVarP(&flagServiceCreateTags, "tag", "t", []string{}, "Tags for the service")
 
 	serviceCmd.AddCommand(serviceCreateCmd)
@@ -400,7 +405,7 @@ func createService(operation *ServiceCreateOperation) {
 		username, password := ecr.GetUsernameAndPassword()
 
 		repository.Login(username, password)
-		repository.Build(tag)
+		repository.Build(tag, operation.Dockerfile)
 		repository.Push(tag)
 
 		operation.Image = repository.UriFor(tag)

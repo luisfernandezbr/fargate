@@ -44,11 +44,17 @@ func (repository *Repository) Login(username, password string) {
 	}
 }
 
-func (repository *Repository) Build(tag string) {
-	console.Debug("Building Docker image [%s]", repository.UriFor(tag))
+func (repository *Repository) Build(tag, dockerfile string) {
+	console.Debug("Building Docker image [%s] dockerfile [%s]", repository.UriFor(tag), dockerfile)
 	console.Shell("docker build --rm=false --tag %s .", repository.UriFor(tag))
 
-	cmd := exec.Command("docker", "build", "--tag", repository.Uri+":"+tag, ".")
+	args := []string{"build", "--tag", repository.Uri + ":" + tag, "."}
+
+	if dockerfile != "" {
+		args = append(args, "--dockerfile", dockerfile)
+	}
+
+	cmd := exec.Command("docker", args...)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

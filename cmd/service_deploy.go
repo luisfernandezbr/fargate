@@ -12,9 +12,11 @@ import (
 type ServiceDeployOperation struct {
 	ServiceName string
 	Image       string
+	Dockerfile  string
 }
 
 var flagServiceDeployImage string
+var flagServiceDeployDockerfile string
 
 var serviceDeployCmd = &cobra.Command{
 	Use:   "deploy <service-name>",
@@ -32,6 +34,7 @@ HEAD commit. If not, a timestamp in the format of YYYYMMDDHHMMSS will be used.`,
 		operation := &ServiceDeployOperation{
 			ServiceName: args[0],
 			Image:       flagServiceDeployImage,
+			Dockerfile:  flagServiceDeployDockerfile,
 		}
 
 		deployService(operation)
@@ -39,7 +42,8 @@ HEAD commit. If not, a timestamp in the format of YYYYMMDDHHMMSS will be used.`,
 }
 
 func init() {
-	serviceDeployCmd.Flags().StringVarP(&flagServiceDeployImage, "image", "i", "", "Docker image to run in the service; if omitted Fargate will build an image from the Dockerfile in the current directory")
+	serviceDeployCmd.Flags().StringVarP(&flagServiceDeployImage, "image", "i", "", "Docker image to run in the service; if omitted Fargate will build an image from the Dockerfile in the current directory or dockerfile flag")
+	serviceDeployCmd.Flags().StringVarP(&flagServiceDeployDockerfile, "dockerfile", "", "", "Dockerfile to build if image is omitted.")
 
 	serviceCmd.AddCommand(serviceDeployCmd)
 }
@@ -63,7 +67,7 @@ func deployService(operation *ServiceDeployOperation) {
 		}
 
 		repository.Login(username, password)
-		repository.Build(tag)
+		repository.Build(tag, operation.Dockerfile)
 		repository.Push(tag)
 
 		operation.Image = repository.UriFor(tag)
