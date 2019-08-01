@@ -3,6 +3,7 @@ package docker
 import (
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/jpignata/fargate/console"
@@ -44,11 +45,20 @@ func (repository *Repository) Login(username, password string) {
 	}
 }
 
-func (repository *Repository) Build(tag string) {
-	console.Debug("Building Docker image [%s]", repository.UriFor(tag))
-	console.Shell("docker build --rm=false --tag %s .", repository.UriFor(tag))
+func (repository *Repository) Build(tag, dockerfile string) {
+	console.Debug("Building Docker image [%s] dockerfile [%s]", repository.UriFor(tag), dockerfile)
 
-	cmd := exec.Command("docker", "build", "--tag", repository.Uri+":"+tag, ".")
+	args := []string{"build", "--tag", repository.Uri + ":" + tag}
+
+	if dockerfile != "" {
+		args = append(args, "--file", dockerfile)
+	}
+
+	args = append(args, ".")
+
+	console.Shell("docker %s", strings.Join(args, " "))
+
+	cmd := exec.Command("docker", args...)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

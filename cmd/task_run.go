@@ -22,6 +22,7 @@ type TaskRunOperation struct {
 	Cpu              string
 	EnvVars          []ECS.EnvVar
 	Image            string
+	Dockerfile       string
 	Memory           string
 	Num              int64
 	SecurityGroupIds []string
@@ -85,6 +86,7 @@ var (
 	flagTaskRunTaskRole         string
 	flagTaskRunGPU              int64
 	flagTaskRunCompatibility    string
+	flagTaskRunDockerfile       string
 )
 
 var taskRunCmd = &cobra.Command{
@@ -151,6 +153,7 @@ assume this role.`,
 			TaskName:         args[0],
 			TaskRole:         flagTaskRunTaskRole,
 			Compatibility:    flagTaskRunCompatibility,
+			Dockerfile:       flagTaskRunDockerfile,
 		}
 
 		operation.SetEnvVars(flagTaskRunEnvVars)
@@ -168,12 +171,13 @@ func init() {
 	taskRunCmd.Flags().Int64VarP(&flagTaskRunGPU, "gpu", "g", 0, "Amount of gpu units to allocate for each task. Must be EC2 compatibility.")
 	taskRunCmd.Flags().StringSliceVarP(&flagTaskRunEnvVars, "env", "e", []string{}, "Environment variables to set [e.g. KEY=value] (can be specified multiple times)")
 	taskRunCmd.Flags().StringVarP(&flagTaskRunCpu, "cpu", "c", "256", "Amount of cpu units to allocate for each task")
-	taskRunCmd.Flags().StringVarP(&flagTaskRunImage, "image", "i", "", "Docker image to run; if omitted Fargate will build an image from the Dockerfile in the current directory")
+	taskRunCmd.Flags().StringVarP(&flagTaskRunImage, "image", "i", "", "Docker image to run; if omitted Fargate will build an image from the Dockerfile in the current directory or dockerfile flag")
 	taskRunCmd.Flags().StringVarP(&flagTaskRunMemory, "memory", "m", "512", "Amount of MiB to allocate for each task")
 	taskRunCmd.Flags().StringSliceVar(&flagTaskRunSecurityGroupIds, "security-group-id", []string{}, "ID of a security group to apply to the task (can be specified multiple times)")
 	taskRunCmd.Flags().StringSliceVar(&flagTaskRunSubnetIds, "subnet-id", []string{}, "ID of a subnet in which to place the task (can be specified multiple times)")
 	taskRunCmd.Flags().StringVarP(&flagTaskRunTaskRole, "task-role", "", "", "Name or ARN of an IAM role that the tasks can assume")
 	taskRunCmd.Flags().StringVarP(&flagTaskRunCompatibility, "compatibility", "", awsecs.CompatibilityFargate, "Compatibility of the task (FARGATE or EC2)")
+	taskRunCmd.Flags().StringVarP(&flagTaskRunDockerfile, "dockerfile", "", "", "if image is omitted, the dockerfile to build")
 	taskCmd.AddCommand(taskRunCmd)
 }
 
@@ -214,7 +218,7 @@ func runTask(operation *TaskRunOperation) {
 		username, password := ecr.GetUsernameAndPassword()
 
 		repository.Login(username, password)
-		repository.Build(tag)
+		repository.Build(tag, operation.Dockerfile)
 		repository.Push(tag)
 
 		operation.Image = repository.UriFor(tag)
